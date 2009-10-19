@@ -105,33 +105,6 @@ class RDFClass(object):
         return self.properties[key]
 
 
-class School(RDFClass):
-    """An example RDFClass using data.gov.uk's School class.
-    
-    >>> list(School.resources())[0]
-    <School: http://education.data.gov.uk/id/school/_514036>
-
-    >>> school = School("http://education.data.gov.uk/id/school/_109602")
-    >>> school
-    <School: http://education.data.gov.uk/id/school/_109602>
-    >>> school[school.ns.establishmentName]
-    rdflib.term.Literal(u'Kensworth VC Lower School')
-    >>> school[school.ns.schoolCapacity]
-    75L
-    >>> school[school.ns.lastChangedDate]
-    datetime.date(2009, 4, 1)
-
-    >>> dct = Namespace("http://purl.org/dc/terms/")
-    >>> school[dct.title]
-    rdflib.term.Literal(u'Linked Data in RDF/XML format for Kensworth VC Lower School')
-    """
-    endpoint_uri = "http://services.data.gov.uk/education/sparql"
-    endpoint_username = "912388632"
-    endpoint_password = "zYqla6sE6bw1"
-    prefix = "http://education.data.gov.uk/ontology/school#"
-    label = "School"
-
-
 if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
+    from doctest import testmod
+    testmod()
