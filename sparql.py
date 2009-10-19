@@ -1,3 +1,4 @@
+from functools import update_wrapper
 from urllib import urlencode
 from urllib2 import build_opener, HTTPBasicAuthHandler, \
     HTTPPasswordMgrWithDefaultRealm, urlopen
@@ -29,6 +30,16 @@ def format_literal(o):
 def format_tuple(tp):
     s, p, o = tp
     return u"%s %s %s" % (format_literal(s), format_literal(p), format_literal(o))
+
+
+def return_clone(method):
+    def wrapped(self, *args, **kwargs):
+        cl = self._clone()
+        method(cl, *args, **kwargs)
+        return cl
+        
+    update_wrapper(method, wrapped)
+    return wrapped
 
 
 class SPARQLEndpoint(object):
@@ -116,28 +127,28 @@ class SelectQuery(object):
     def _clone(self):
         return self.__class__(self._q)
 
-    def select(self, var_or_vars):
-        cl = self._clone()
+    @return_clone
+    def select(cl, var_or_vars):
         if isinstance(var_or_vars, basestring):
             cl._q["select"].append(var_or_vars)
         else:
             cl._q["select"] += var_or_vars
-        return cl
 
-    def where(self, subj, pred, obj):
-        cl = self._clone()
+    @return_clone
+    def distinct(cl):
+        cl._q["distinct"] = True
+
+    @return_clone
+    def where(cl, subj, pred, obj):
         cl._q["where"].append((subj, pred, obj))
-        return cl
 
-    def optional(self, subj, pred, obj):
-        cl = self._clone()
+    @return_clone
+    def optional(cl, subj, pred, obj):
         cl._q["optional"].append((subj, pred, obj))
-        return cl
 
-    def limit(self, limit):
-        cl = self._clone()
+    @return_clone
+    def limit(cl, limit):
         cl._q["limit"] = limit
-        return cl
 
     def __repr__(self):
         return "<Query: %s>" % self
@@ -148,6 +159,8 @@ class SelectQuery(object):
 
         # select vars
         q.append(u"select")
+        if self._q["distinct"]:
+            q.append(u"distinct")
         if self._q["select"]:
             q += [var for var in self._q["select"]]
         else:
