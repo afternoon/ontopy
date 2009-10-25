@@ -33,8 +33,7 @@ class RDFClassMetaclass(type):
             # create resources static attribute which looks-up resources from
             # the SPARQL endpoint
             def resources():
-                return (cls(resource_uri) for resource_uri in
-                        cls.endpoint.resources(cls.class_uri))
+                return cls.endpoint.resources(cls.class_uri)
             setattr(cls, "resources", staticmethod(resources))
 
 
@@ -109,6 +108,7 @@ class RDFClass(object):
         if not hasattr(self, "properties"):
             self.get_properties()
         return self.properties[key]
+
 
 
 if __name__ == "__main__":

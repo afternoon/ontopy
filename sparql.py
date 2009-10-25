@@ -91,7 +91,7 @@ class SPARQLEndpoint(object):
         return self.simple_query("""select distinct ?property where { ?object a <%s> . ?object ?property ?x }""" % class_uri)
 
     def resources(self, class_uri):
-        return self.simple_query("""select ?resource where { ?resource a <%s> }""" % class_uri)
+        return SelectQuery().select("?resource").where("?resource", a, URIRef(class_uri))
 
 
 class SelectQuery(object):
@@ -161,10 +161,13 @@ class SelectQuery(object):
             cl._q["offset"] = k
             cl._q["limit"] = 1
         elif isinstance(k, slice):
-            if k.step != 1:
+            if k.step is not None and k.step != 1:
                 raise ValueError("SelectQuery only supports a step of 1")
-            cl._q["offset"] = k.start
-            cl._q["limit"] = k.stop - k.start
+            offset = k.start or 0
+            if offset > 0:
+                cl._q["offset"] = offset
+            if k.stop is not None:
+                cl._q["limit"] = k.stop - offset
         else:
             raise TypeError("Slice arguments must be of type slice, int or long")
 
@@ -203,13 +206,13 @@ class SelectQuery(object):
             q.append(u"order by")
             q.append(u", ".join([o for o in self._q["order_by"]]))
 
-        # limit number of rows returned
-        if self._q["limit"] is not None:
-            q += [u"limit", str(self._q["limit"])]
-
         # offset row results
         if self._q["offset"] is not None:
             q += [u"offset", str(self._q["offset"])]
+
+        # limit number of rows returned
+        if self._q["limit"] is not None:
+            q += [u"limit", str(self._q["limit"])]
 
         return u" ".join(q)
 
