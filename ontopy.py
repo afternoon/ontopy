@@ -63,11 +63,17 @@ class RDFClass(object):
 
     Iterate over all bands known to the SPARQL endpoint:
 
-    >>> list(Band.resources())[0]
+    >>> Band.resources()[0]
     <Band: http://dbpedia.org/resource/%21%21%21>
 
-    Iterate over a subset of bands using something like `for b in
-    Band.filter("size > 100"): print b[rdfs.label]`
+    >>> for b in Band.resources()[:5]:
+    ...     print b
+    <Band: http://dbpedia.org/resource/%21%21%21>
+    <Band: http://dbpedia.org/resource/...>
+    <Band: http://dbpedia.org/resource/...>
+    <Band: http://dbpedia.org/resource/...>
+    <Band: http://dbpedia.org/resource/...>
+
     """
     __metaclass__ = RDFClassMetaclass
 

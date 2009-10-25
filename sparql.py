@@ -103,13 +103,10 @@ class SelectQuery(object):
     >>> q2 = q.select("?resource").where("?resource", a, band)
     >>> str(q2)
     'select ?resource where { ?resource a <http://dbpedia.org/ontology/Band> }'
-    >>> q3 = q2.limit(1)
-    >>> str(q3)
-    'select ?resource where { ?resource a <http://dbpedia.org/ontology/Band> } limit 1'
     >>> rdfs = Namespace("http://www.w3.org/2000/01/rdf-schema#")
-    >>> q4 = q3.optional("?resource", rdfs.label, "Kraftwerk")
-    >>> str(q4)
-    'select ?resource where { ?resource a <http://dbpedia.org/ontology/Band> optional { ?resource <http://www.w3.org/2000/01/rdf-schema#label> "Kraftwerk" } } limit 1'
+    >>> q3 = q2.optional("?resource", rdfs.label, "Kraftwerk")
+    >>> str(q3)
+    'select ?resource where { ?resource a <http://dbpedia.org/ontology/Band> optional { ?resource <http://www.w3.org/2000/01/rdf-schema#label> "Kraftwerk" } }'
 
     This class uses a dictionary to keep track of the various parts of the
     query. Only "flat" queries can be represented. A SPARQL query is a tree
@@ -147,8 +144,29 @@ class SelectQuery(object):
         cl._q["optional"].append((subj, pred, obj))
 
     @return_clone
-    def limit(cl, limit):
-        cl._q["limit"] = limit
+    def __getitem__(cl, k):
+        """Restrict number results returned.
+        
+        >>> band = URIRef("http://dbpedia.org/ontology/Band")
+        >>> q = SelectQuery().select("?resource").where("?resource", a, band)
+        >>> str(q[0])
+        'select ?resource where { ?resource a <http://dbpedia.org/ontology/Band> } limit 1'
+        >>> str(q[1])
+        'select ?resource where { ?resource a <http://dbpedia.org/ontology/Band> } limit 1 offset 1'
+        >>> str(q[:5])
+        'select ?resource where { ?resource a <http://dbpedia.org/ontology/Band> } limit 5'
+
+        """
+        if isinstance(k, (int, long)):
+            cl._q["offset"] = k
+            cl._q["limit"] = 1
+        elif isinstance(k, slice):
+            if k.step != 1:
+                raise ValueError("SelectQuery only supports a step of 1")
+            cl._q["offset"] = k.start
+            cl._q["limit"] = k.stop - k.start
+        else:
+            raise TypeError("Slice arguments must be of type slice, int or long")
 
     def __repr__(self):
         return "<Query: %s>" % self
