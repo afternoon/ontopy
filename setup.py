@@ -1,15 +1,24 @@
 #!/usr/bin/env python
+"""Simple RDF to Python mapper built on top of rdflib.
+
+Manipulate RDF data stored remotely as Python data structures.
+
+Ontopy includes a SPARQL query builder for accessing sets of resources behind
+SPARQL endpoints.
+
+"""
 from distutils.core import setup
 
 
 setup(name="ontopy",
 		version="0.1",
-		description="Simple RDF to Python mapper built on top of rdflib",
+		description=__doc__,
 		py_modules=["ontopy", "sparql"],
+        platforms=["any"],
 
 		author="Ben Godfrey",
 		author_email="ben@ben2.com",
-		url="http://aftnn.org/",
+		url="http://github.com/afternoon/ontopy/",
 
         requires=[
             "rdflib (>=2.5)"
