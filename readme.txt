@@ -29,5 +29,10 @@ Interact with their data in a nice friendly Python way:
     >>> kraftwerk = Band("http://dbpedia.org/resource/Kraftwerk")
     >>> kraftwerk
     <Band: http://dbpedia.org/resource/Kraftwerk>
-    >>> kraftwerk[rdfs.label]
-    'Kraftwerk'
+
+RDF property names are commonly URIs. rdflib namespaces provide convenient
+shortcuts for names.
+
+    >>> from rdflib.namespace import RDFS
+    >>> kraftwerk[RDFS.label]
+    u'Kraftwerk'

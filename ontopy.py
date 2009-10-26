@@ -6,14 +6,19 @@ to be generated automatically from an RDFS or OWL ontology or by introspecting
 an RDF graph.
 
 """
-from rdflib.term import URIRef
+from rdflib.term import bind, URIRef
 from rdflib.graph import Graph
 from rdflib.namespace import Namespace
 
 from sparql import a, SPARQLEndpoint, SelectQuery
 
 
+# dump lots of debug info
 DEBUG = False
+
+
+# by default return rdflib.term.Literals as Unicode strings
+bind(None, unicode)
 
 
 class RDFClassManager(object):
@@ -72,7 +77,7 @@ class RDFClassMetaclass(type):
         super(RDFClassMetaclass, cls).__init__(name, bases, dct)
 
         if "endpoint_uri" in dct and "prefix" in dct:
-            label = dct["label"] if "label" in dct else cls.__name__
+            label = dct["label"] if "label" in dct else unicode(cls.__name__)
 
             setattr(cls, "label", label)
             setattr(cls, "ns", Namespace(dct["prefix"]))
@@ -101,7 +106,7 @@ class RDFClass(object):
     ...     endpoint_uri = "http://dbpedia.org/sparql"
     ...     prefix = "http://dbpedia.org/ontology/"
     >>> Band.label
-    'Band'
+    u'Band'
     >>> Band.ns
     rdflib.term.URIRef('http://dbpedia.org/ontology/')
     >>> Band.class_uri
@@ -114,13 +119,9 @@ class RDFClass(object):
     >>> kraftwerk = Band("http://dbpedia.org/resource/Kraftwerk")
     >>> kraftwerk
     <Band: http://dbpedia.org/resource/Kraftwerk>
-    >>> rdfs = Namespace("http://www.w3.org/2000/01/rdf-schema#")
-    >>> rdfs.label
-    rdflib.term.URIRef('http://www.w3.org/2000/01/rdf-schema#label')
-    >>> kraftwerk[rdfs.label]
-    rdflib.term.Literal(u'Kraftwerk', lang=u'en')
-    >>> str(kraftwerk[rdfs.label])
-    'Kraftwerk'
+    >>> from rdflib.namespace import RDFS
+    >>> kraftwerk[RDFS.label]
+    u'Kraftwerk'
 
     Iterate over all bands known to the SPARQL endpoint:
 
