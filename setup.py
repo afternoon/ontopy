@@ -11,7 +11,7 @@ from distutils.core import setup
 
 
 setup(name="ontopy",
-		version="0.1",
+		version="0.1.1",
 		description=__doc__,
 		py_modules=["ontopy", "sparql"],
         platforms=["any"],
