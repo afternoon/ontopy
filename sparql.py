@@ -11,13 +11,13 @@ from rdflib.namespace import Namespace
 SPARQL_NS = "http://www.w3.org/2005/sparql-results#"
 
 
-class ACombinator(object):
+class APredicate(object):
     pass
-a = ACombinator()
+a = APredicate()
 
 
 def format_literal(o):
-    if isinstance(o, ACombinator):
+    if isinstance(o, APredicate):
         return u"a"
     elif isinstance(o, URIRef):
         return u"<%s>" % o
@@ -28,8 +28,7 @@ def format_literal(o):
 
 
 def format_tuple(tp):
-    s, p, o = tp
-    return u"%s %s %s" % (format_literal(s), format_literal(p), format_literal(o))
+    return u"%s %s %s" % tuple(map(format_literal, tp))
 
 
 def return_clone(method):
@@ -91,7 +90,8 @@ class SPARQLEndpoint(object):
         return self.simple_query("""select distinct ?property where { ?object a <%s> . ?object ?property ?x }""" % class_uri)
 
     def resources(self, class_uri):
-        return SelectQuery().select("?resource").where("?resource", a, URIRef(class_uri))
+        q = SelectQuery().select("?resource").where("?resource", a, u)
+        return self.simple_query(str(q))
 
 
 class SelectQuery(object):

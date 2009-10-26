@@ -20,12 +20,14 @@ Declare resource classes as Python classes.
     >>> class Band(RDFClass):
     ...     endpoint_uri = "http://dbpedia.org/sparql"
     ...     prefix = "http://dbpedia.org/ontology/"
-    ...     label = "Band"
+    ...     label = "Band" # optional - class name used as default
 
 Interact with their data in a nice friendly Python way:
 
-    >>> kraftwerk = Band("http://dbpedia.org/page/Kraftwerk")
-    >>> kraftwerk
-    <Band: http://dbpedia.org/page/Kraftwerk>
-    >>> list(Band.resources())[0]
+    >>> Band.resources[0]
     <Band: http://dbpedia.org/resource/%21%21%21>
+    >>> kraftwerk = Band("http://dbpedia.org/resource/Kraftwerk")
+    >>> kraftwerk
+    <Band: http://dbpedia.org/resource/Kraftwerk>
+    >>> kraftwerk[rdfs.label]
+    'Kraftwerk'
