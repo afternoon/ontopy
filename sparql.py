@@ -1,7 +1,8 @@
+from copy import deepcopy
 from functools import update_wrapper
 from urllib import urlencode
 from urllib2 import build_opener, HTTPBasicAuthHandler, \
-    HTTPPasswordMgrWithDefaultRealm, urlopen
+    HTTPError, HTTPPasswordMgrWithDefaultRealm, urlopen
 from xml.etree.cElementTree import dump, parse
 
 from rdflib.term import URIRef, Literal
@@ -9,6 +10,10 @@ from rdflib.namespace import Namespace
 
 
 SPARQL_NS = "http://www.w3.org/2005/sparql-results#"
+
+
+class SPARQLQueryException(Exception):
+    pass
 
 
 class APredicate(object):
@@ -21,24 +26,16 @@ def format_literal(o):
         return u"a"
     elif isinstance(o, URIRef):
         return u"<%s>" % o
+    elif hasattr(o, "resource_uri"): # duck typing to avoid importing RDFClass
+        return u"<%s>" % o.resource_uri
     elif isinstance(o, basestring) and o[0] != u"?":
         return u"\"%s\"" % o
     else:
-        return o
+        return str(o)
 
 
 def format_tuple(tp):
     return u"%s %s %s" % tuple(map(format_literal, tp))
-
-
-def return_clone(method):
-    def wrapped(self, *args, **kwargs):
-        cl = self._clone()
-        method(cl, *args, **kwargs)
-        return cl
-        
-    update_wrapper(method, wrapped)
-    return wrapped
 
 
 class SPARQLEndpoint(object):
@@ -68,7 +65,15 @@ class SPARQLEndpoint(object):
         """Run a SPARQL query against the endpoint."""
         args = {"query": query}
         url = "%s?%s" % (self.base_url, urlencode(args))
-        return parse(self.open(url))
+        try:
+            response = self.open(url)
+        except HTTPError, e:
+            if e.code == 400:
+                raise SPARQLQueryException("'%s' is not a valid SPARQL query." %
+                        query)
+            else:
+                raise e
+        return parse(response)
 
     def simple_query(self, query):
         etree = self.query(query)
@@ -83,15 +88,26 @@ class SPARQLEndpoint(object):
         return self.simple_query("""select distinct ?class where { ?a a ?class }""")
 
     def properties(self, class_uri):
-        """Get a list of all the properties of things known about the specified
-        class. Note not all 
-        
+        """Get a list of all predicates used for a given class in the dataset.
+        This could be a very wide selection with predicates from lots of
+        different namespaces.
+
         """
         return self.simple_query("""select distinct ?property where { ?object a <%s> . ?object ?property ?x }""" % class_uri)
 
     def resources(self, class_uri):
         q = SelectQuery().select("?resource").where("?resource", a, u)
         return self.simple_query(str(q))
+
+
+def return_clone(method):
+    def wrapped(self, *args, **kwargs):
+        cl = self._clone()
+        method(cl, *args, **kwargs)
+        return cl
+        
+    update_wrapper(method, wrapped)
+    return wrapped
 
 
 class SelectQuery(object):
@@ -103,8 +119,12 @@ class SelectQuery(object):
     >>> q2 = q.select("?resource").where("?resource", a, band)
     >>> str(q2)
     'select ?resource where { ?resource a <http://dbpedia.org/ontology/Band> }'
-    >>> rdfs = Namespace("http://www.w3.org/2000/01/rdf-schema#")
-    >>> q3 = q2.optional("?resource", rdfs.label, "Kraftwerk")
+    >>> person = URIRef("http://dbpedia.org/ontology/Person")
+    >>> q2a = q.select("?resource").where("?resource", a, person)
+    >>> str(q2a)
+    'select ?resource where { ?resource a <http://dbpedia.org/ontology/Person> }'
+    >>> from rdflib.namespace import RDFS
+    >>> q3 = q2.optional("?resource", RDFS.label, "Kraftwerk")
     >>> str(q3)
     'select ?resource where { ?resource a <http://dbpedia.org/ontology/Band> optional { ?resource <http://www.w3.org/2000/01/rdf-schema#label> "Kraftwerk" } }'
 
@@ -122,7 +142,10 @@ class SelectQuery(object):
                 "filter": [], "order_by": [], "limit": None, "offset": None}
 
     def _clone(self):
-        return self.__class__(self._q)
+        return deepcopy(self)
+
+    def __deepcopy__(self, memodict):
+        return self.__class__(deepcopy(self._q, memodict))
 
     @return_clone
     def select(cl, var_or_vars):
@@ -190,11 +213,11 @@ class SelectQuery(object):
         # where clauses
         if self._q["where"]:
             q += [u"where", u"{"]
-            q += [format_tuple(tp) for tp in self._q["where"]]
+            q.append(u" . ".join([format_tuple(tp) for tp in self._q["where"]]))
 
             if self._q["optional"]:
                 q += [u"optional", u"{"]
-                q += [format_tuple(tp) for tp in self._q["optional"]]
+                q.append(u" . ".join([format_tuple(tp) for tp in self._q["optional"]]))
                 q.append(u"}")
 
             q.append(u"}")

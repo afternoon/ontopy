@@ -36,3 +36,5 @@ shortcuts for names.
     >>> from rdflib.namespace import RDFS
     >>> kraftwerk[RDFS.label]
     u'Kraftwerk'
+
+See the docstring for RDFClass for more examples.

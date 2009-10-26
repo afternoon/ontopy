@@ -26,10 +26,13 @@ class RDFClassManager(object):
     RDFClass objects.
     
     """
-    def __init__(self, cls):
+    def __init__(self, cls, query=None):
         self.cls = cls
-        self.query = SelectQuery().select("?resource").where("?resource", a,
-                cls.class_uri)
+        if query:
+            self.query = query
+        else:
+            self.query = SelectQuery().select("?resource").where("?resource", a,
+                    cls.class_uri)
 
     def run_query(self):
         """Return a list of URIs representing each of the objects matched by the
@@ -56,9 +59,20 @@ class RDFClassManager(object):
         elif isinstance(k, slice):
             return (self.cls(uri) for uri in results)
 
+    def where(self, predicate, object):
+        """Automatically insert current resource as subject for where query."""
+        new_query = self.query.where(u"?resource", predicate, object)
+        return RDFClassManager(self.cls, new_query)
+
+    def optional(self, predicate, object):
+        """Automatically insert current resource as subject for optional query."""
+        new_query = self.query.optional(u"?resource", predicate, object)
+        return RDFClassManager(self.cls, new_query)
+
     def __getattr__(self, name, *args, **kwargs):
         attr = getattr(self.query, name)
-        self.query = attr(*args, **kwargs)
+        new_query = attr(*args, **kwargs)
+        return RDFClassManager(self.cls, new_query)
 
 
 class RDFClassMetaclass(type):
@@ -90,7 +104,7 @@ class RDFClassMetaclass(type):
                 setattr(cls, "endpoint", SPARQLEndpoint(dct["endpoint_uri"]))
 
             # create resources attribute which looks-up resources from the
-            # SPARQL endpoint
+            # SPARQL endpoint and returns instances of cls
             setattr(cls, "resources", RDFClassManager(cls))
 
 
@@ -127,7 +141,6 @@ class RDFClass(object):
 
     >>> Band.resources[0]
     <Band: http://dbpedia.org/resource/%21%21%21>
-
     >>> for b in Band.resources[:5]:
     ...     print b
     <Band: http://dbpedia.org/resource/%21%21%21>
@@ -136,6 +149,29 @@ class RDFClass(object):
     <Band: http://dbpedia.org/resource/%22Weird_Al%22_Yankovic>
     <Band: http://dbpedia.org/resource/%2768_Comeback>
     
+    Compose complex queries and get all matching bands:
+
+    >>> dbpedia_owl = Namespace("http://dbpedia.org/ontology/")
+    >>> class Person(RDFClass):
+    ...     endpoint_uri = "http://dbpedia.org/sparql"
+    ...     prefix = "http://dbpedia.org/ontology/"
+    >>> michael_rother = Person("http://dbpedia.org/resource/Michael_Rother")
+    >>> ralf_hutter = Person("http://dbpedia.org/resource/Ralf_H%C3%BCtter")
+    >>> Band.resources.where(dbpedia_owl.pastMembers, michael_rother).query
+    <Query: select ?resource where { ?resource a <http://dbpedia.org/ontology/Band> . ?resource <http://dbpedia.org/ontology/pastMembers> <http://dbpedia.org/resource/Michael_Rother> }>
+    >>> for b in Band.resources.where(dbpedia_owl.pastMembers, michael_rother):
+    ...     print b
+    <Band: http://dbpedia.org/resource/Kraftwerk>
+    <Band: http://dbpedia.org/resource/Neu%21>
+    >>> Band.resources.where(dbpedia_owl.currentMembers, ralf_hutter).query
+    <Query: select ?resource where { ?resource a <http://dbpedia.org/ontology/Band> . ?resource <http://dbpedia.org/ontology/currentMembers> <http://dbpedia.org/resource/Ralf_H%C3%BCtter> }>
+    >>> for b in Band.resources.where(dbpedia_owl.currentMembers, ralf_hutter):
+    ...     print b
+    <Band: http://dbpedia.org/resource/Kraftwerk>
+
+    Note that the RDFClass instance always takes the place of the subject in
+    the SPARQL query.
+
     """
     __metaclass__ = RDFClassMetaclass
     lang = u"en"
